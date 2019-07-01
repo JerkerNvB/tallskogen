@@ -33,11 +33,16 @@
   * Green LED anode to digital 8
   * Green LED cathode to resistor 
 
-The photo transistor circuit:
-  * Photo transistor collector to 5V
-  * Photo transistor emitter to analog 0
+The phototransistor circuit:
+  * phototransistor collector to 5V
+  * phototransistor emitter to analog 0
   * Resistor 2k Ohm to emitter
   * Resistor 2k Ohm to ground
+
+The servo circuit:
+  * Servo + to 5V
+  * Servo pulse to digital 13
+  * Servo - to ground
 
 This code is in the public domain and heavily based on Arduino example code also in the public domain.
 
@@ -45,6 +50,11 @@ This code is in the public domain and heavily based on Arduino example code also
 
 // include the library code:
 #include <LiquidCrystal.h>
+
+// include the servo code:
+#include <Servo.h>
+
+Servo servoGate;  // create servo object to control a servo
 
 // initialize the library by associating any needed LCD interface pin
 // with the arduino pin number it is connected to
@@ -54,10 +64,13 @@ LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
 int start;
 char message[10];
 
-// this is the photo transmitter analog pin
+// this is the phototransistor analog pin
 int analogPin = 0;
 int analogVal = 0;
+int analogMax = 0;
 
+// we have no final time yet
+int finalTime = 0;
 // this is the pizeo element digital pin
 int piezoPin = 10;
 
@@ -66,14 +79,14 @@ int redPin = 6;
 int yellowPin = 7;
 int greenPin = 8;
 
-
-
-// the frequency of the beep
+// beep frequency
 int freq = 1000;
 int freqOver = 100;
 
 void setup() {
-
+  
+  servoGate.attach(13);  // attaches the servo on pin 9 to the servo object
+  
   // set up the LCD's number of columns and rows:
   lcd.begin(16, 2);
 
@@ -91,6 +104,7 @@ void setup() {
   lcd.setCursor(0,0);
   lcd.print("Tallskogen Rally");
   delay(500);
+  servoGate.write(0); 
 
   // prepare the race with red light
   lcd.clear();
@@ -122,9 +136,9 @@ void setup() {
   digitalWrite(greenPin, LOW); 
 
   // begin counting milliseconds
-
   start=millis();
   lcd.clear();
+  servoGate.write(130); 
 
 }
 
@@ -146,15 +160,7 @@ void qpt(int value) { //quad print time
   lcd.print(c);
   lcd.setCursor(8, 1);
   lcd.print(c);
-
-  
 }
-
-// initiate max read value for the phototransistor
-int analogMax = 0;
-
-// we have no final time yet
-int finalTime = 0;
 
 // the main loop
 void loop() {
@@ -172,7 +178,7 @@ void loop() {
     analogMax = analogVal;
   }
   if (analogVal < analogMax/2) {
-    // shadow detected above photo transistor
+    // shadow detected above phototransistor
     analogMax = 0;
     finalTime = eT;
     tone(piezoPin, freq, 20);
@@ -188,9 +194,9 @@ void loop() {
     lcd.setCursor(0, 1);
     lcd.print("Race over");
     tone(piezoPin, freqOver, 600);
+    servoGate.write(0);
     while(1);
   }
   
-  
-  delay(1);
+  delay(0);
 }
