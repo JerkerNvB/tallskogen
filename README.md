@@ -1,18 +1,9 @@
 # tallskogen
 
-This is a simple proof-of-concept Pinewood Derby timer for Arduino. 
+This is a simple Pinewood Derby timer for Arduino built using The Arduino Starter Kit.
 
-## the good
-
- * Red / Yellow / Green traffic light
+ * Red / Yellow / Green traffic light (optional)
  * Beep when starting race
  * Servo for releasing start gate
- * Phototransistor for timer
- 
-## the bad
-
-* Only one lane
-
-## the ugly
-
-* There are probably better ways of doing this.
+ * Phototransistors for timer
+ * Up to six lanes
