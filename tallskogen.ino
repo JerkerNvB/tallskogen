@@ -4,7 +4,7 @@
  This is a Pinewood Derby timer circuit proof-of-concept with one lane using
  The Arduino Starter Kit.
 
-  The circuit LCD display:
+ The LCD display circuit: <https://www.arduino.cc/en/Tutorial/HelloWorld>
  * LCD RS pin to digital pin 12
  * LCD Enable pin to digital pin 11
  * LCD D4 pin to digital pin 5
@@ -15,11 +15,14 @@
  * LCD VSS pin to ground
  * LCD VCC pin to 5V
  * 10K resistor:
- * ends to +5V and ground
- * wiper to LCD VO pin (pin 3)
+ *   ends to +5V and ground
+ *   wiper to LCD VO pin (pin 3)
+ * 220 ohm resistor to 5V
+ * LCD LED+ to 220 ohm resistor
+ * LCD LED- to ground
 
 
- The piezo electric element circuit:
+ The piezo electric element circuit: <https://github.com/bhagman/Tone#warning>
   * Piezo to ground
   * Resistor 1k Ohm to Piezo 
   * Resistor 1k Ohm to digital pin 10
@@ -33,9 +36,9 @@
   * Green LED anode to digital 8
   * Green LED cathode to resistor 
 
-The phototransistor circuit:
+The phototransistor circuits: (up to six of these using analog input 0 to 5)
   * phototransistor collector to 5V
-  * phototransistor emitter to analog 0
+  * phototransistor emitter to analog 0  (from 0 to 5)
   * Resistor 2k Ohm to emitter
   * Resistor 2k Ohm to ground
 
@@ -47,6 +50,9 @@ The servo circuit:
 This code is in the public domain and heavily based on Arduino example code also in the public domain.
 
 */
+
+//number of lanes (same as the number of phototransistor circuits)
+int lanes = 3;
 
 // include the library code:
 #include <LiquidCrystal.h>
@@ -62,15 +68,22 @@ const int rs = 12, en = 11, d4 = 5, d5 = 4, d6 = 3, d7 = 2;
 LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
 
 int start;
-char message[10];
 
 // this is the phototransistor analog pin
-int analogPin = 0;
+
+int analogValArray[6];
+int analogMaxArray[6];
+
+int analogPin = A0;
 int analogVal = 0;
 int analogMax = 0;
 
 // we have no final time yet
 int finalTime = 0;
+int finalTimeArray[6];
+
+int finishedLanes = 0;
+
 // this is the pizeo element digital pin
 int piezoPin = 10;
 
@@ -84,6 +97,12 @@ int freq = 1000;
 int freqOver = 100;
 
 void setup() {
+  int i;
+  
+  // clear array
+  for (i=0; i<lanes; i++) {
+    finalTimeArray[i] = 0;
+  }
   
   servoGate.attach(13);  // attaches the servo on pin 9 to the servo object
   
@@ -162,16 +181,51 @@ void qpt(int value) { //quad print time
   lcd.print(c);
 }
 
+
+
+// Print Time
+void printPos(int i) {
+  if (i == 0) {lcd.setCursor(0,0);}
+  if (i == 2) {lcd.setCursor(6,0);}
+  if (i == 4) {lcd.setCursor(11,0);}
+  if (i == 1) {lcd.setCursor(0,1);}
+  if (i == 3) {lcd.setCursor(6,1);}
+  if (i == 5) {lcd.setCursor(11,1);}
+}
+void printTime(int i, int v) {
+  printPos(i);
+  lcd.print(v);
+}
+
 // the main loop
 void loop() {
   int eT;
   int lastUpdate;
+  int i;
   
   // calculate elapsed time
   eT=millis()-start;
   
   // read the phototransistor
-  analogVal=analogRead(analogPin);
+  for (i=0; i<lanes; i++) {
+    analogValArray[i] = analogRead(i);
+    if (analogValArray[i] > analogMaxArray[i]) {
+      analogMaxArray[i] = analogValArray[i];
+    }
+    if (analogValArray[i] < analogMaxArray[i]/2) {
+      tone(piezoPin, freq+100*i, 20);
+      analogMaxArray[i] = 0;
+      if (finalTimeArray[i] == 0) {
+        finalTimeArray[i] = eT;
+        printTime(i, finalTimeArray[i]);
+        finishedLanes++;
+      }
+    }
+    if (finalTimeArray[i] == 0) {
+      printTime(i, eT);
+    }
+  }
+/*  analogVal=analogRead(analogPin);
 
   if (analogVal > analogMax) {
     // light is increasing
@@ -187,16 +241,32 @@ void loop() {
   if (finalTime == 0 && eT <30000) {
       qpt (eT);
   }
-  if (eT >30000) {
+  */
+  if (eT >30000 || finishedLanes==lanes) {
     lcd.setCursor(0, 0);
-    lcd.clear();
-    lcd.print("Tallskogen Rally");
-    lcd.setCursor(0, 1);
-    lcd.print("Race over");
+    //lcd.clear();
+    //lcd.print("Tallskogen Rally");
+    //lcd.setCursor(0, 1);
+    //lcd.print("Race over");
     tone(piezoPin, freqOver, 600);
     servoGate.write(0);
-    while(1);
+    while(1) {
+      delay(500);
+      int roll;
+      roll++;   
+      for (i=0; i<lanes; i++) {
+        if (finalTimeArray[i] == 0) {
+          printPos(i);
+          if (roll % 6 == 0) {lcd.print(" ^_^ ");}
+          if (roll % 6 == 1) {lcd.print(" -_^ ");}
+          if (roll % 6 == 2) {lcd.print(" ^_^ ");}
+          if (roll % 6 == 3) {lcd.print(" ^_^ ");}
+          if (roll % 6 == 4) {lcd.print(" ^_- ");}
+          if (roll % 6 == 5) {lcd.print(" ^_^ ");}
+
+        }
+      }
+    }
   }
-  
   delay(0);
 }
