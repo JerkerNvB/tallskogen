@@ -51,8 +51,14 @@ This code is in the public domain and heavily based on Arduino example code also
 
 */
 
+
 //number of lanes (same as the number of phototransistor circuits)
-int lanes = 3;
+// CHANGE THIS TO THE NUMBER OF LANES IN YOUR TRACK
+int lanes = 6;
+
+// How long will the race run until timed out.
+// CHANGE THIS TO HIGH OR LOW VALUE DEPENDING ON TRACK
+int timeOut = 10000;
 
 // include the library code:
 #include <LiquidCrystal.h>
@@ -84,6 +90,9 @@ int finalTimeArray[6];
 
 int finishedLanes = 0;
 
+int oldTime = 0;
+int raceOver = 0;
+  
 // this is the pizeo element digital pin
 int piezoPin = 10;
 
@@ -121,7 +130,7 @@ void setup() {
 
   // initiate logo
   lcd.setCursor(0,0);
-  lcd.print("Tallskogen Rally");
+  lcd.print("Tallskogen Derby");
   delay(500);
   servoGate.write(0); 
 
@@ -202,7 +211,7 @@ void loop() {
   int eT;
   int lastUpdate;
   int i;
-  
+
   // calculate elapsed time
   eT=millis()-start;
   
@@ -212,46 +221,37 @@ void loop() {
     if (analogValArray[i] > analogMaxArray[i]) {
       analogMaxArray[i] = analogValArray[i];
     }
+    
     if (analogValArray[i] < analogMaxArray[i]/2) {
       tone(piezoPin, freq+100*i, 20);
       analogMaxArray[i] = 0;
-      if (finalTimeArray[i] == 0) {
+      if (finalTimeArray[i] == 0 && raceOver == 0) {
         finalTimeArray[i] = eT;
         printTime(i, finalTimeArray[i]);
         finishedLanes++;
       }
     }
-    if (finalTimeArray[i] == 0) {
+    // print the rolling time if race is not over
+    if (finalTimeArray[i] == 0 && raceOver == 0) {
       printTime(i, eT);
     }
   }
-/*  analogVal=analogRead(analogPin);
 
-  if (analogVal > analogMax) {
-    // light is increasing
-    analogMax = analogVal;
+  // 
+  if (eT >timeOut && raceOver == 0) {
+    raceOver = 1;
+    tone(piezoPin, freqOver, 600);
   }
-  if (analogVal < analogMax/2) {
-    // shadow detected above phototransistor
-    analogMax = 0;
-    finalTime = eT;
-    tone(piezoPin, freq, 20);
-    qpt (finalTime);
-  }
-  if (finalTime == 0 && eT <30000) {
-      qpt (eT);
-  }
-  */
-  if (eT >30000 || finishedLanes==lanes) {
+    
+  if (finishedLanes==lanes || raceOver == 1) {
     lcd.setCursor(0, 0);
     //lcd.clear();
     //lcd.print("Tallskogen Rally");
     //lcd.setCursor(0, 1);
     //lcd.print("Race over");
-    tone(piezoPin, freqOver, 600);
     servoGate.write(0);
-    while(1) {
-      delay(500);
+    if (millis() > oldTime+500) {
+      oldTime=millis();
       int roll;
       roll++;   
       for (i=0; i<lanes; i++) {
